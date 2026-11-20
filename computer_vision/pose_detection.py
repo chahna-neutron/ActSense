@@ -59,8 +59,18 @@ class PoseDetector:
             )
             self.hand_detector = vision.HandLandmarker.create_from_options(hand_options)
 
-        self.pose_connections = mp.solutions.pose.POSE_CONNECTIONS
-        self.hand_connections = mp.solutions.hands.HAND_CONNECTIONS
+        self.pose_connections = [
+            (0, 1), (1, 2), (2, 3), (3, 7), (0, 4), (4, 5), (5, 6), (6, 8),
+            (9, 10), (11, 12), (11, 13), (13, 15), (15, 17), (15, 19), (15, 21),
+            (17, 19), (12, 14), (14, 16), (16, 18), (16, 20), (16, 22), (18, 20),
+            (11, 23), (12, 24), (23, 24), (23, 25), (24, 26), (25, 27), (26, 28),
+            (27, 29), (28, 30), (29, 31), (30, 32), (27, 31), (28, 32)
+        ]
+        self.hand_connections = [
+            (0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8),
+            (5, 9), (9, 10), (10, 11), (11, 12), (9, 13), (13, 14), (14, 15),
+            (15, 16), (13, 17), (0, 17), (17, 18), (18, 19), (19, 20)
+        ]
 
         # Persistent tracker state: {pid: {"center": (cx, cy), "missing": int, "landmarks": list}}
         self.tracked_people = {}

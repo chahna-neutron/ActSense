@@ -1,5 +1,6 @@
 import cv2
 from computer_vision.pose_detection import PoseDetector
+from machine_learning.predict import MultiPersonActivityPredictor
 
 
 def main():
@@ -17,6 +18,7 @@ def main():
             enable_hands=True,
             num_hands=10
         )
+        activity_tracker = MultiPersonActivityPredictor()
 
         print("ActSense AI camera started! Press 'Q' in the video window to exit.")
 
@@ -31,8 +33,24 @@ def main():
             frame = cv2.flip(frame, 1)
 
             annotated_frame, detection_data = detector.process_frame(frame)
+            predictions = activity_tracker.predict_people(detection_data["people"])
 
-            # Bottom hint (keeps top-left clear for FPS, People, and Hands HUD)
+            # Display detected activity and confidence on screen
+            y_offset = 145
+            for pid, (activity, confidence) in predictions.items():
+                text = f"Person {pid}: {activity} ({confidence * 100:.0f}%)"
+                cv2.putText(
+                    annotated_frame,
+                    text,
+                    (20, y_offset),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.75,
+                    (255, 100, 255),
+                    2,
+                    cv2.LINE_AA
+                )
+                y_offset += 35
+
             h = annotated_frame.shape[0]
             cv2.putText(
                 annotated_frame,
@@ -45,7 +63,7 @@ def main():
                 cv2.LINE_AA
             )
 
-            cv2.imshow("ActSense AI - Live Pose Tracking", annotated_frame)
+            cv2.imshow("ActSense AI - Live Pose & Activity Tracking", annotated_frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), ord("Q")):

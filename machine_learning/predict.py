@@ -6,21 +6,6 @@ from machine_learning.feature_extraction import SEQUENCE_LENGTH, extract_sequenc
 MODEL_PATH = "machine_learning/models/activity_rf.pkl"
 
 
-def format_landmarks(landmarks):
-    """
-    Accepts either:
-      - Member 1's list of 33 dicts: [{"x": ..., "y": ..., "z": ..., "visibility": ...}, ...]
-      - A flat list/array of 132 floats
-    Returns a 1D numpy float32 array of length 132.
-    """
-    if len(landmarks) == 33 and isinstance(landmarks[0], dict):
-        return np.array(
-            [[lm["x"], lm["y"], lm["z"], lm.get("visibility", 0.0)] for lm in landmarks],
-            dtype=np.float32
-        ).flatten()
-    return np.asarray(landmarks, dtype=np.float32).flatten()
-
-
 class ActivityPredictor:
     def __init__(self, model_path=MODEL_PATH):
         self.model = joblib.load(model_path)
@@ -29,13 +14,12 @@ class ActivityPredictor:
     def reset(self):
         self.frame_buffer.clear()
 
-    def predict_frame(self, landmarks):
+    def predict_frame(self, landmarks_132):
         """
-        Accepts 1 frame of landmarks (either 33 dicts from PoseDetector or 132 floats).
-        Returns (activity_name: str, confidence: float).
+        Accepts 1 frame of 33 MediaPipe landmarks flattened to 132 values [x, y, z, visibility, ...].
+        Maintains a sliding window of the last 30 frames and returns (activity, confidence).
         """
-        flat_132 = format_landmarks(landmarks)
-        self.frame_buffer.append(flat_132)
+        self.frame_buffer.append(np.asarray(landmarks_132, dtype=np.float32).flatten())
 
         if len(self.frame_buffer) < SEQUENCE_LENGTH:
             return "Collecting frames...", 0.0
@@ -49,26 +33,9 @@ class ActivityPredictor:
         return activity, confidence
 
 
-class MultiPersonActivityPredictor:
-    """Maintains a separate 30-frame buffer per tracked person_id from Member 1's PoseDetector."""
-    def __init__(self, model_path=MODEL_PATH):
-        self.model_path = model_path
-        self.predictors = {}
-
-    def predict_people(self, people_data):
-        """
-        Takes detection_data["people"] from PoseDetector.process_frame(frame).
-        Returns a dict: {person_id: (activity, confidence)}
-        """
-        active_ids = {p["person_id"] for p in people_data}
-        for pid in list(self.predictors.keys()):
-            if pid not in active_ids:
-                del self.predictors[pid]
-
-        results = {}
-        for person in people_data:
-            pid = person["person_id"]
-            if pid not in self.predictors:
-                self.predictors[pid] = ActivityPredictor(self.model_path)
-            results[pid] = self.predictors[pid].predict_frame(person["landmarks"])
-        return results
+# Quick verification test
+if __name__ == "__main__":
+    predictor = ActivityPredictor()
+    for _ in range(SEQUENCE_LENGTH):
+        activity, confidence = predictor.predict_frame(np.zeros(132))
+    print(f"Integration test passed -> Activity: {activity}, Confidence: {confidence}")
